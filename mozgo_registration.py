@@ -53,10 +53,9 @@ class Mozgo:
         assert type(password) == str, 'password must be string'
         self.login = login
         self.password = password
-        self.team_list = []
-        self.event_list = []
         self.current_team_index = None
         self.current_event_index = None
+        self.players_count = None
 
         url_login = "https://api.base.mozgo.com/login"
 
@@ -73,7 +72,7 @@ class Mozgo:
         else:
             print('Login failed')
 
-    def get_team_id_list(self):
+    def __get_team_id_list(self):
         # TODO add check of current team index (<= len(self.teams.teams))
         url_team_id_list = 'https://api.base.mozgo.com/players/me'
 
@@ -92,11 +91,11 @@ class Mozgo:
             print(f'{i}. {j.name} ({j.city})')
         print('Enter the number to select the team:')
         self.current_team_index = int(input())
+        print('Enter the number of players:')
+        self.players_count = int(input())
 
-    def get_event_list(self, city_id):
+    def __get_event_list(self):
         # TODO add check of current event index (<= len(self.event))
-        if self.current_team_index is None:
-            self.get_team_id_list()
 
         url_event_list = f'https://api.base.mozgo.com/events/dates/{self.teams.teams[self.current_team_index].city_id}'
 
@@ -115,10 +114,26 @@ class Mozgo:
         print('Enter the number to select the game:')
         self.current_event_index = int(input())
 
-    def register_to_game(self, player_count):
+    def register_to_game(self):
         # TODO add time check
         if self.current_team_index is None:
-            self.get_team_id_list()
+            self.__get_team_id_list()
+        if self.current_event_index is None:
+            self.__get_event_list()
+
+        now = datetime.datetime.now()
+        aim = dateparser.parse(self.event[self.current_event_index].registration_at)
+        while now < aim:
+            now = datetime.datetime.now()
+            print((aim - now), 'remaining')
+            # ic((aim - now))
+            # ic((aim - now).days * 86400 + (aim - now).seconds)
+            est_time = (aim - now).days * 86400 + (aim - now).seconds + 1
+            if est_time > 0:
+                time.sleep(est_time)
+        # ic(now)
+        # ic(aim)
+        # ic(now > aim)
 
         url_reg = "https://api.base.mozgo.com/players/applications"
 
@@ -128,10 +143,8 @@ class Mozgo:
                        'comment': '',
                        'event_day_id': self.event[self.current_event_index].uuid,
                        'play_for_first_time': False,
-                       'player_count': player_count,
+                       'player_count': self.players_count,
                        'promocode': '',
-                       #    'roistat_first_visit': '634805',
-                       #    'roistat_visit': '',
                        'sms': '',
                        'team_id': self.teams.teams[self.current_team_index].id}
 
@@ -148,6 +161,3 @@ class Mozgo:
         else:
             print('Registration failed')
         return response_reg.status_code
-
-        # ic(response_reg.status_code)
-        # ic(response_reg.text)
